@@ -25,6 +25,12 @@
                     Wasabi Viewer
                 </h1>
                 <p>Gerencie conexões com seus buckets Wasabi S3</p>
+                <!-- Mensagem temática de Natal -->
+                <div class="xmas-banner" role="note" aria-label="Feliz Natal">
+                    <i class="fas fa-tree"></i>
+                    <span class="title">Feliz Natal</span>
+                    <span class="subtitle">Boas festas e bons downloads!</span>
+                </div>
             </div>
 
             <!-- Menu de Ações -->
@@ -342,7 +348,7 @@
                             <button id="custom-expiry-dec" class="btn btn-secondary btn-compact" aria-label="Diminuir">
                                 <i class="fas fa-minus"></i>
                             </button>
-                            <input id="custom-expiry-value" type="number" min="1" max="43200" value="1" inputmode="numeric" />
+                            <input id="custom-expiry-value" type="number" min="1" max="10080" value="1" inputmode="numeric" />
                             <button id="custom-expiry-inc" class="btn btn-secondary btn-compact" aria-label="Aumentar">
                                 <i class="fas fa-plus"></i>
                             </button>
@@ -355,7 +361,7 @@
                         <button id="link-custom-generate-btn" class="btn btn-primary btn-compact">
                             <i class="fas fa-key"></i> Gerar Link
                         </button>
-                        <span class="hint">Limite: até 30 dias</span>
+                        <span class="hint">Limite: até 7 dias</span>
                     </div>
                     <div class="link-result">
                         <textarea id="generated-link" readonly></textarea>
@@ -402,6 +408,45 @@
             </div>
         </div>
     </div>
+
+    <!-- Decoração Natalina: luzes piscantes no topo (não interfere em cliques) -->
+    <div id="christmas-lights" class="christmas-lights" aria-hidden="true">
+        <div class="lights">
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+            <span class="bulb"></span>
+        </div>
+    </div>
+
+    <!-- Trenó voando (primeira abertura) -->
+    <div id="santa-sleigh" class="santa-sleigh" aria-hidden="true">
+        <span class="santa">🎅</span>
+        <span class="sled">🛷</span>
+    </div>
+
+    <!-- Camada de partículas de neve (overlay) -->
+    <div id="snow-layer" aria-hidden="true"></div>
 
     <!-- Modal de Erro de Caminho (fora de main-screen) -->
     <div id="path-error-modal" class="modal">

@@ -101,6 +101,7 @@ let _dragIndex = null;
 // Notificações: controle de simultâneas e fila
 let _notifActiveCount = 0;
 let _notifPending = [];
+// Controla animação do trenó ao usar o atalho
 
 function updateMiniQueueInfo(options = {}) {
     const q = Array.isArray(_downloadQueue) ? _downloadQueue.length : 0;
@@ -262,6 +263,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Carregar configurações salvas
     await loadSavedConfigs();
     setupEventListeners();
+
+    // Tema de Natal: luzes sempre visíveis
+    try {
+        const christmasLights = document.getElementById('christmas-lights');
+        if (christmasLights) {
+            christmasLights.style.display = 'flex';
+        }
+    } catch (e) {
+        console.warn('Falha ao aplicar tema de Natal:', e);
+    }
+
+    // Trenó: passar automaticamente na abertura (com rastro de neve)
+    try {
+        const sleigh = document.getElementById('santa-sleigh');
+        if (sleigh) {
+            // dispara sempre ao abrir
+            triggerSleigh({ withSnow: true });
+        }
+    } catch (e) {
+        console.warn('Falha ao exibir trenó de boas-vindas:', e);
+    }
 
     // Se há configurações salvas, mostrar a primeira na lista de buckets
     if (savedConfigs.length > 0) {
@@ -589,6 +611,96 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 });
+
+// Emite partículas de neve durante a passagem do trenó
+function startSleighSnowTrail(durationMs = 6000) {
+    try {
+        let layer = document.getElementById('snow-layer');
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.id = 'snow-layer';
+            document.body.appendChild(layer);
+        }
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const start = performance.now();
+        const interval = reduceMotion ? 140 : 100;
+        const baseCount = reduceMotion ? 4 : 14;
+
+        const timer = setInterval(() => {
+            const now = performance.now();
+            const t = now - start;
+            // Mantenha emissão até o trenó finalizar; limite máximo por segurança
+            if (!_sleighAnimating) { clearInterval(timer); return; }
+            if (t >= durationMs * 1.5) { clearInterval(timer); return; }
+            const progress = t / durationMs;
+            const sleighEl = document.getElementById('santa-sleigh');
+            let emitterXTrail, emitterTop;
+            if (sleighEl) {
+                const rect = sleighEl.getBoundingClientRect();
+                // posiciona levemente atrás do trenó (lado esquerdo), com pequena variação
+                emitterXTrail = rect.left - 24 + (Math.random() - 0.5) * 12;
+                emitterTop = rect.top + rect.height * 0.6 + (Math.random() - 0.5) * 12;
+            } else {
+                const vw = window.innerWidth;
+                const emitterX = (-0.1 * vw) + progress * (1.2 * vw);
+                emitterXTrail = emitterX - (0.06 * vw);
+                emitterTop = (window.innerHeight * 0.5);
+            }
+            const flakeCount = baseCount;
+            for (let i = 0; i < flakeCount; i++) {
+                const el = document.createElement('span');
+                el.className = 'snowflake';
+                const size = 2 + Math.random() * 3;
+                const blur = 0.4 + Math.random() * 1.2;
+                const opacity = 0.6 + Math.random() * 0.4;
+                const dx = (Math.random() - 0.5) * 100;
+                const left = emitterXTrail + (Math.random() - 0.5) * 80;
+                const top = emitterTop;
+                const dur = (reduceMotion ? 1800 : 2400) + Math.random() * (reduceMotion ? 1200 : 1800);
+                const delay = Math.random() * 120;
+                el.style.setProperty('--size', `${size}px`);
+                el.style.setProperty('--blur', `${blur}px`);
+                el.style.setProperty('--opacity', `${opacity}`);
+                el.style.setProperty('--dx', `${dx}px`);
+                el.style.setProperty('--left', `${left}px`);
+                el.style.setProperty('--top', `${top}px`);
+                el.style.setProperty('--dur', `${dur}ms`);
+                el.style.setProperty('--delay', `${delay}ms`);
+                el.addEventListener('animationend', () => {
+                    if (el.parentNode) el.parentNode.removeChild(el);
+                }, { once: true });
+                layer.appendChild(el);
+            }
+        }, interval);
+    } catch (err) {
+        console.warn('Falha ao emitir neve do trenó:', err);
+    }
+}
+
+// Cooldown de atalho e disparo do trenó
+let _sleighCooldownUntil = 0;
+const SLEIGH_COOLDOWN_MS = 8000; // 8 segundos
+
+// Dispara a animação do trenó (opcionalmente com rastro de neve)
+function triggerSleigh({ withSnow = true } = {}) {
+    const sleigh = document.getElementById('santa-sleigh');
+    const now = performance.now();
+    if (!sleigh || _sleighAnimating || now < _sleighCooldownUntil) return;
+    sleigh.style.display = 'block';
+    if (withSnow) sleigh.classList.add('snow');
+    sleigh.classList.add('active');
+    _sleighAnimating = true;
+    if (withSnow) startSleighSnowTrail(5000);
+    const onEnd = () => {
+        sleigh.classList.remove('active');
+        if (withSnow) sleigh.classList.remove('snow');
+        sleigh.style.display = 'none';
+        _sleighAnimating = false;
+        _sleighCooldownUntil = performance.now() + SLEIGH_COOLDOWN_MS;
+        sleigh.removeEventListener('animationend', onEnd);
+    };
+    sleigh.addEventListener('animationend', onEnd);
+}
 
 // Carregar configurações salvas
 async function loadSavedConfigs() {
@@ -929,6 +1041,16 @@ function setupEventListeners() {
             wrap.addEventListener('mouseleave', () => { queuePopover.setAttribute('aria-hidden', 'true'); });
         }
     }
+
+    // Atalho F9: exibir o trenó com rastro de neve (sem persistência)
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'F9') return;
+        try {
+            triggerSleigh({ withSnow: true });
+        } catch (err) {
+            console.warn('Falha ao acionar F9 para o trenó:', err);
+        }
+    });
 }
 
 // Configurar eventos dos modais
@@ -985,16 +1107,16 @@ function setupModalEvents() {
                 showNotification('Informe um valor válido para a validade.', 'warning');
                 return;
             }
-            // Máximo 30 dias
+            // Máximo 7 dias (limite do provedor com SigV4)
             let seconds = 0;
             if (unit === 'minutes') seconds = rawVal * 60;
             else if (unit === 'hours') seconds = rawVal * 60 * 60;
             else seconds = rawVal * 24 * 60 * 60; // days
 
-            const maxSeconds = 30 * 24 * 60 * 60;
+            const maxSeconds = (7 * 24 * 60 * 60) - 1; // 604799
             if (seconds > maxSeconds) {
-                showNotification('Validade máxima permitida é de 30 dias.', 'warning');
-                return;
+                showNotification('Validade máxima permitida é de 7 dias. Ajustando automaticamente.', 'warning');
+                seconds = maxSeconds;
             }
             generateLink(seconds);
         });
@@ -1963,12 +2085,19 @@ function showLinkModal(fileKey) {
     linkModal.classList.add('active');
 }
 
-// Gerar link do arquivo (expiração em segundos)
+    // Gerar link do arquivo (expiração em segundos)
 async function generateLink(expirySeconds = 3600) {
     if (!selectedFileKey) return;
 
     try {
-        const url = await window.electronAPI.generateSignedLink(selectedFileKey, expirySeconds);
+        // Respeitar limite de até 7 dias: apenas avisar, não ajustar automaticamente
+        const MAX_SECONDS = (7 * 24 * 60 * 60) - 1; // 604799
+        const effectiveExpiry = Number(expirySeconds) || 3600;
+        if (effectiveExpiry > MAX_SECONDS) {
+            showNotification('A validade máxima é 7 dias. Ajuste o período e tente novamente.', 'warning');
+            return; // não gerar link automaticamente
+        }
+        const url = await window.electronAPI.generateSignedLink(selectedFileKey, effectiveExpiry);
         generatedLink.value = url;
         linkResult.classList.add('active');
     } catch (error) {
@@ -2436,3 +2565,5 @@ function showNotification(message, type = 'info', options = {}) {
 
     enqueue(message, type, options);
 }
+// Estado de animação do trenó para evitar reentrância
+let _sleighAnimating = false;

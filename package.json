@@ -60,6 +60,6 @@
       "uninstallerSidebar": "assets/nsis-uninstaller-sidebar.bmp",
       "installerHeader": "assets/nsis-installer-header.bmp"
     },
-    "buildVersion": "1.2"
+    "buildVersion": "1.2(SE)"
   }
 }

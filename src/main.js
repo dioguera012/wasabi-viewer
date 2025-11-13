@@ -487,12 +487,15 @@ ipcMain.handle('generate-signed-link', async (event, fileKey, expiresIn = 3600) 
   }
 
   try {
+    // SigV4 exige expiração menor que 7 dias
+    const MAX_EXPIRY_SECONDS = (7 * 24 * 60 * 60) - 1; // 604799
+    const safeExpiresIn = Math.min(Math.max(Number(expiresIn) || 3600, 1), MAX_EXPIRY_SECONDS);
     const command = new GetObjectCommand({
       Bucket: s3Config.bucket,
       Key: fileKey
     });
 
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: safeExpiresIn });
     return signedUrl;
   } catch (error) {
     console.error('Erro ao gerar link assinado:', error);
