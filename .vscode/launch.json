@@ -1,0 +1,64 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "🚀 Wasabi Viewer - Dev (F5)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+            "windows": {
+                "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+            },
+            "args": [
+                "."
+            ],
+            "outputCapture": "std",
+            "console": "integratedTerminal",
+            "preLaunchTask": "check-dependencies",
+            "env": {
+                "NODE_ENV": "development"
+            }
+        },
+        {
+            "name": "🔧 Wasabi Viewer - Debug Detalhado",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+            "windows": {
+                "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+            },
+            "args": [
+                ".",
+                "--remote-debugging-port=9222"
+            ],
+            "outputCapture": "std",
+            "console": "integratedTerminal",
+            "preLaunchTask": "check-dependencies",
+            "env": {
+                "NODE_ENV": "development",
+                "ELECTRON_ENABLE_LOGGING": "1"
+            }
+        },
+        {
+            "name": "📦 Wasabi Viewer - Produção",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+            "windows": {
+                "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+            },
+            "args": [
+                "."
+            ],
+            "outputCapture": "std",
+            "console": "integratedTerminal",
+            "preLaunchTask": "check-dependencies",
+            "env": {
+                "NODE_ENV": "production"
+            }
+        }
+    ]
+}
