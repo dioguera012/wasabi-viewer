@@ -6,6 +6,9 @@ package-lock.json
 dist/
 build/
 
+# Setups (instaladores)
+setup/*.exe
+
 # Logs
 *.log
 npm-debug.log*

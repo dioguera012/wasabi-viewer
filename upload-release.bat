@@ -16,7 +16,7 @@ if "%VERSION%"=="" (
     exit /b 1
 )
 
-set INSTALLER_PATH=dist\setups\%VERSION%\Wasabi Viewer Setup %VERSION%.exe
+set INSTALLER_PATH=setup\Wasabi Viewer Setup %VERSION%.exe
 
 :: Verificar se o instalador existe
 if not exist "%INSTALLER_PATH%" (

@@ -38,9 +38,14 @@ if %errorLevel% == 0 (
     echo  [SUCESSO] Instalador gerado!
     echo ========================================
     echo.
-    echo Localização: dist\setups\
+    echo Localizacao: dist\setups\
     echo.
     call node scripts/post-dist.js
+    
+    echo.
+    echo [EXTRA] Copiando para pasta setup/ e gerenciando versoes...
+    call node scripts/manage-setup-versions.js
+    
 ) else (
     echo ========================================
     echo  [ERRO] Falha ao gerar instalador
