@@ -13,8 +13,9 @@ let sharingConfigId = null;
 
 // Estado de ordenação
 let sortState = {
-    column: 'date', // 'name', 'size', 'date'
-    direction: 'desc' // 'asc', 'desc'
+    column: null, // 'name', 'size', 'date' ou null para usar ordenação padrão
+    direction: 'asc', // 'asc', 'desc'
+    userInteracted: false // Flag para saber se o usuário já interagiu com a ordenação
 };
 // Variables to compute download speed and ETA
 let _downloadLastSample = null; // { time: ms, bytes: number }
@@ -32,6 +33,7 @@ const configForm = document.getElementById('config-form');
 const configStatus = document.getElementById('config-status');
 const fileList = document.getElementById('file-list');
 const searchInput = document.getElementById('search-input');
+const searchClearBtn = document.getElementById('search-clear-btn');
 const breadcrumbPath = document.getElementById('breadcrumb-path');
 const refreshBtn = document.getElementById('refresh-btn');
 const configBtn = document.getElementById('config-btn');
@@ -253,7 +255,11 @@ let saveModalMode = 'download'; // 'download' | 'chooseDir'
 let saveNavHistory = [];
 let saveNavIndex = -1;
 // Estado de preferências
-let appPreferences = { useDefaultDownloadDir: false, defaultDownloadDir: null, theme: 'light' };
+let appPreferences = { 
+    useDefaultDownloadDir: false, 
+    defaultDownloadDir: null, 
+    theme: 'light'
+};
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
@@ -742,6 +748,7 @@ function setupEventListeners() {
             setTheme(newTheme);
         });
     }
+    
     if (prefUseDefaultDownload) {
         prefUseDefaultDownload.addEventListener('change', async () => {
             appPreferences.useDefaultDownloadDir = !!prefUseDefaultDownload.checked;
@@ -767,6 +774,14 @@ function setupEventListeners() {
 
     // Pesquisa
     searchInput.addEventListener('input', handleSearch);
+    
+    // Botão de limpar busca
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearSearch();
+        });
+    }
 
     // Ordenação por colunas
     setupSortListeners();
@@ -1242,13 +1257,14 @@ async function loadFiles(path = '', options = {}) {
         console.log('Chamando listS3Objects...');
         const files = await window.electronAPI.listS3Objects(path);
         console.log('Arquivos carregados:', files.length);
-        
-        // Verificar se há pastas com tamanho calculado
-        const foldersWithSize = files.filter(f => f.type === 'folder' && f.size > 0).length;
-        if (foldersWithSize > 0) {
-            console.log(`${foldersWithSize} pasta(s) com tamanho calculado`);
-        }
 
+        // Se não veio do histórico e usuário não interagiu com ordenação manual, usar ordenação padrão
+        // Isso garante que cada pasta nova comece com a ordenação padrão (seja do sistema ou customizada)
+        if (!fromHistory && !sortState.userInteracted) {
+            sortState.column = null;
+            sortState.direction = 'asc';
+        }
+        
         // Aplicar ordenação baseada no estado atual
         const sortedFiles = sortFilesByColumn(files, sortState.column, sortState.direction);
 
@@ -1267,6 +1283,7 @@ async function loadFiles(path = '', options = {}) {
         renderFiles(filteredFiles);
         updateBreadcrumb(path);
         updateSortIndicators();
+        
         // Atualizar histórico se não vier de navegação do histórico
         if (!fromHistory) {
             // Se o usuário navegou para uma nova pasta, cortar o futuro
@@ -1287,6 +1304,7 @@ async function loadFiles(path = '', options = {}) {
     }
 }
 
+
 function updateNavButtons() {
     if (navBackBtn) {
         navBackBtn.disabled = navIndex <= 0;
@@ -1298,6 +1316,8 @@ function updateNavButtons() {
 
 function goBack() {
     if (navIndex > 0) {
+        // Limpar busca ao navegar
+        clearSearch();
         navIndex -= 1;
         const targetPath = navHistory[navIndex] || '';
         loadFiles(targetPath, { fromHistory: true });
@@ -1307,6 +1327,8 @@ function goBack() {
 
 function goForward() {
     if (navIndex < navHistory.length - 1) {
+        // Limpar busca ao navegar
+        clearSearch();
         navIndex += 1;
         const targetPath = navHistory[navIndex] || '';
         loadFiles(targetPath, { fromHistory: true });
@@ -1378,7 +1400,22 @@ function sortFilesByColumn(files, column, direction) {
         }
     };
 
-    // Ordenar pastas e arquivos separadamente
+    // Se não há coluna definida (null), usar ordenação padrão do sistema
+    if (!column) {
+        // Padrão do sistema: pastas por nome (alfabética) - ascendente, arquivos por data - descendente
+        folders.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+        
+        regularFiles.sort((a, b) => {
+            const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+            const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+            return dateB - dateA; // Descendente (mais recente primeiro)
+        });
+        
+        // Retornar pastas primeiro, depois arquivos
+        return [...folders, ...regularFiles];
+    }
+
+    // Ordenar pastas e arquivos separadamente com a ordenação escolhida pelo usuário
     const comparator = getComparator(column, direction);
     folders.sort(comparator);
     regularFiles.sort(comparator);
@@ -1389,6 +1426,9 @@ function sortFilesByColumn(files, column, direction) {
 
 // Alternar ordenação de uma coluna
 function toggleSort(column) {
+    // Marcar que o usuário interagiu com a ordenação
+    sortState.userInteracted = true;
+    
     if (sortState.column === column) {
         // Mesma coluna: alternar direção
         sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
@@ -1436,6 +1476,12 @@ function updateSortIndicators() {
         
         // Remover classes de estado ativo
         header.classList.remove('sort-active');
+        
+        // Se não há coluna definida (ordenação padrão), não mostrar indicador ativo
+        if (!sortState.column) {
+            sortIcon.className = 'fas fa-sort sort-icon';
+            return;
+        }
         
         if (column === sortState.column) {
             // Coluna ativa
@@ -1496,7 +1542,7 @@ function createFileItem(file) {
                 <i class="file-icon ${file.type} ${icon}"></i>
                 <span>${file.name}</span>
             </div>
-            <div class="file-size"${dateTitle ? ` title="${sizeTitle}"` : ''}>${size}</div>
+            <div class="file-size"${sizeTitle ? ` title="${sizeTitle}"` : ''}>${size}</div>
             <div class="file-date"${dateTitle ? ` title="${dateTitle}"` : ''}>${date}</div>
             <div class="file-actions">
                 ${!isFolder ? `
@@ -1622,7 +1668,12 @@ function updateBreadcrumb(path) {
 
 // Pesquisar arquivos
 function handleSearch(e) {
-    const query = e.target.value.toLowerCase();
+    const query = e.target.value.trim().toLowerCase();
+    
+    // Mostrar/esconder botão de limpar busca
+    if (searchClearBtn) {
+        searchClearBtn.style.display = query ? 'flex' : 'none';
+    }
 
     // Aplicar ordenação atual aos arquivos
     const sortedFiles = sortFilesByColumn(currentFiles, sortState.column, sortState.direction);
@@ -1636,6 +1687,14 @@ function handleSearch(e) {
     }
 
     renderFiles(filteredFiles);
+}
+
+// Limpar busca
+function clearSearch() {
+    if (searchInput) {
+        searchInput.value = '';
+        handleSearch({ target: searchInput });
+    }
 }
 
 // Download de arquivo

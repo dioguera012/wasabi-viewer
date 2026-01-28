@@ -258,48 +258,6 @@ ipcMain.handle('load-s3-configs', async () => {
   }
 });
 
-// Função auxiliar para calcular tamanho total e data mais recente de uma pasta
-async function getFolderStats(folderPrefix) {
-  try {
-    let totalSize = 0;
-    let mostRecentDate = null;
-    let continuationToken = null;
-
-    // Lista todos os objetos dentro da pasta recursivamente
-    do {
-      const command = new ListObjectsV2Command({
-        Bucket: s3Config.bucket,
-        Prefix: folderPrefix,
-        ContinuationToken: continuationToken,
-        MaxKeys: 1000 // Limitar para não sobrecarregar
-      });
-
-      const response = await s3Client.send(command);
-
-      if (response.Contents) {
-        for (const item of response.Contents) {
-          // Somar tamanho
-          totalSize += item.Size || 0;
-
-          // Encontrar data mais recente
-          if (item.LastModified) {
-            if (!mostRecentDate || item.LastModified > mostRecentDate) {
-              mostRecentDate = item.LastModified;
-            }
-          }
-        }
-      }
-
-      continuationToken = response.NextContinuationToken;
-    } while (continuationToken);
-
-    return { totalSize, mostRecentDate };
-  } catch (error) {
-    console.error(`Erro ao calcular stats da pasta ${folderPrefix}:`, error);
-    return { totalSize: 0, mostRecentDate: null };
-  }
-}
-
 // Listar objetos S3
 ipcMain.handle('list-s3-objects', async (event, prefix = '') => {
   if (!s3Client || !s3Config) {
@@ -331,17 +289,8 @@ ipcMain.handle('list-s3-objects', async (event, prefix = '') => {
       lastModified: item.LastModified
     })).filter(file => file.name !== ''); // Remove pastas vazias
 
-    // Calcular tamanho e data mais recente para cada pasta (em paralelo)
-    const folderPromises = folders.map(async (folder) => {
-      const stats = await getFolderStats(folder.key);
-      folder.size = stats.totalSize;
-      folder.lastModified = stats.mostRecentDate;
-      return folder;
-    });
-
-    const foldersWithStats = await Promise.all(folderPromises);
-
-    return [...foldersWithStats, ...files];
+    // Retornar pastas sem calcular tamanho e data (evita requests excessivos)
+    return [...folders, ...files];
   } catch (error) {
     console.error('Erro ao listar objetos:', error);
     throw error;
